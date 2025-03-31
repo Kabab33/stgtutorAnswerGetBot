@@ -53,13 +53,19 @@ def get_form_data(id:int, raw:bool=False):
  })
     print(colored(f"[LOG] {url} is opgevraagd van studygo", 'blue'))
     print(colored(f"[LOG] studygo zei: {response.status_code} {response.reason}", 'blue'), flush=True)
+    if response.status_code != 200:
+        print(colored(f"[ERROR] {response.status_code} {response.reason}", 'red'), flush=True)
     if raw:
         return response
     else: 
+        responce_details= {
+            'status_code': response.status_code,
+            'reason': response.reason,
+            'success': response.status_code == 200,
+            
+        }
         dresponse = loads(response.text)
-        tutanswr = [
-
-        ]
+        tutanswr = []
         for answer in dresponse['qna_question']['tutor_qna_answers']:
             tutanswr.append({
                 'body': removeHtmlTags(answer['body']),
@@ -71,7 +77,7 @@ def get_form_data(id:int, raw:bool=False):
                 },
                 'attatchments': answer['qna_attachments']
             })
-    return tutanswr
+    return tutanswr, responce_details
 
 
 
@@ -125,9 +131,16 @@ async def tutanswgett(ctx, url:discord.Option(discord.SlashCommandOptionType.str
         await ctx.respond(embeds=[embed])
     else:
         id = int(spliturl[6])
-        res = get_form_data(id)
+        res, stat = get_form_data(id)
         #loop door de antwoorden en maak een embed voor elk antwoord
         embedss = []
+        if stat['success'] == False:
+            embed = discord.Embed(
+                title="ERROR",
+                description=f"Studygo RETEURND {stat['status_code']} NOT SUCSESS",
+                footer=f"Reason: {stat['reason']}",
+                color=discord.Color.red()
+            )
         for answer in res:
             r, g, b = hex_to_rgb(answer['tutor']['kleur'])
             embed = discord.Embed(
@@ -180,8 +193,15 @@ async def tutanswgett(ctx, url:discord.Option(discord.SlashCommandOptionType.str
 )
 async def tutanswgettid(ctx, id:discord.Option(discord.SlashCommandOptionType.integer)):
     print(colored(f"[LOG] {ctx.author} heeft de id {id} opgevraagd", 'blue'), flush=True)
-    res = get_form_data(id)
+    res, sdat = get_form_data(id)
     #loop door de antwoorden en maak een embed voor elk antwoord
+    if sdat['success'] == False:
+            embed = discord.Embed(
+                title="ERROR",
+                description=f"Studygo RETEURND {sdat['status_code']} NOT SUCSESS",
+                footer=f"Reason: {sdat['reason']}",
+                color=discord.Color.red()
+            )
     embedss = []
     for answer in res:
         r, g, b = hex_to_rgb(answer['tutor']['kleur'])
